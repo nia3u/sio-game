@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ヘビゲーム（背景画像追加版）</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #2c3e50; /* フォールバック背景色 */
+            font-family: 'Press Start 2P', cursive;
+            color: #ecf0f1;
+            overflow: hidden;
+            /* 背景画像用のスタイル（JSで画像読み込み後に設定） */
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
+            background-attachment: fixed; /* ビューポート全体を覆うように固定 */
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-shadow: 3px 3px 0px #e74c3c;
+            /* 背景画像によっては文字色や影の調整が必要になる場合があります */
+        }
+        #gameContainer {
+            position: relative;
+            border: 5px solid #c0392b;
+            box-shadow: 0 0 20px rgba(231, 76, 60, 0.5);
+            background-color: #34495e; /* Canvasの親要素の背景 */
+            touch-action: none;
+        }
+        canvas {
+            display: block;
+            background-color: #ecf0f1; /* Canvas自体の背景 */
+        }
+        #scoreBoard {
+            font-size: 1.5em;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: rgba(231, 76, 60, 0.8); /* 背景が透けるように少し透明度を持たせることも可能 */
+            border-radius: 8px;
+            box-shadow: 0 4px 0 #c0392b;
+        }
+        #controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        .control-button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1em;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #2980b9;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        .control-button:active {
+            background-color: #2980b9;
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #2980b9;
+        }
+        #messageBox {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(44, 62, 80, 0.9);
+            color: #ecf0f1;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 1.5em;
+            z-index: 100;
+            display: none;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        }
+        #messageText {
+            margin-bottom: 20px;
+        }
+        #restartButton {
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1em;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #27ae60;
+        }
+        #restartButton:active {
+            background-color: #27ae60;
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #27ae60;
+        }
+
+        #mobileControls {
+            display: none;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+            width: 180px;
+        }
+        .mobile-button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 15px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.2em;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #2980b9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #upButton { grid-column: 2 / 3; grid-row: 1 / 2; }
+        #leftButton { grid-column: 1 / 2; grid-row: 2 / 3; }
+        #rightButton { grid-column: 3 / 4; grid-row: 2 / 3; }
+        #downButton { grid-column: 2 / 3; grid-row: 2 / 3; }
+
+        @media (max-width: 600px) {
+            h1 { font-size: 1.8em; }
+            #scoreBoard { font-size: 1.2em; }
+            .control-button { font-size: 0.9em; padding: 12px 15px;}
+            #messageBox { font-size: 1.2em; padding: 20px; }
+            #restartButton { font-size: 0.9em; padding: 12px 25px; }
+            #mobileControls { display: grid; }
+        }
+    </style>
+</head>
+<body>
+    <h1>ヘビゲーム</h1>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+    </div>
+    <div id="scoreBoard">スコア: 0</div>
+
+    <div id="controls">
+        <button id="startButton" class="control-button">スタート</button>
+    </div>
+
+    <div id="mobileControls">
+        <button id="upButton" class="mobile-button">↑</button>
+        <button id="leftButton" class="mobile-button">←</button>
+        <button id="downButton" class="mobile-button">↓</button>
+        <button id="rightButton" class="mobile-button">→</button>
+    </div>
+
+    <div id="messageBox">
+        <div id="messageText">ゲームオーバー！</div>
+        <button id="restartButton">もう一度プレイ</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreBoard = document.getElementById('scoreBoard');
+        const startButton = document.getElementById('startButton');
+        const messageBox = document.getElementById('messageBox');
+        const messageText = document.getElementById('messageText');
+        const restartButton = document.getElementById('restartButton');
+        const gameContainer = document.getElementById('gameContainer');
+
+        const upButton = document.getElementById('upButton');
+        const leftButton = document.getElementById('leftButton');
+        const downButton = document.getElementById('downButton');
+        const rightButton = document.getElementById('rightButton');
+
+        const fixedCanvasSize = 400;
+        const gridSize = 20;
+        let tileCount = fixedCanvasSize / gridSize;
+
+        let snake, apple, score, dx, dy, gameInterval, gameActive;
+
+        // --- 画像の読み込み ---
+        const appleImage = new Image();
+        const snakeHeadImage = new Image();
+        const backgroundImage = new Image();
+        let imagesLoaded = 0;
+        const totalImages = 3;
+
+        // ▼▼▼ 画像のパスをローカルファイルに変更 ▼▼▼
+        appleImage.src = 'images/apple.png';       // リンゴの画像
+        snakeHeadImage.src = 'images/snake_head.png'; // ヘビの頭の画像
+        backgroundImage.src = 'images/background.png'; // 背景の画像
+        // ▲▲▲ 画像のパスをローカルファイルに変更 ▲▲▲
+
+
+        appleImage.onload = imageLoaded;
+        snakeHeadImage.onload = imageLoaded;
+        backgroundImage.onload = imageLoaded;
+
+        appleImage.onerror = () => { console.error("リンゴ画像の読み込みに失敗しました: " + appleImage.src); imageLoaded(); };
+        snakeHeadImage.onerror = () => { console.error("ヘビ頭画像の読み込みに失敗しました: " + snakeHeadImage.src); imageLoaded(); };
+        backgroundImage.onerror = () => { console.error("背景画像の読み込みに失敗しました: " + backgroundImage.src); imageLoaded(); };
+
+        function imageLoaded() {
+            imagesLoaded++;
+            console.log(`画像 ${imagesLoaded}/${totalImages} 読み込み完了`);
+            if (imagesLoaded === totalImages) {
+                console.log("すべての画像が読み込まれました。");
+                document.body.style.backgroundImage = `url('${backgroundImage.src}')`;
+
+                if (startButton.textContent === 'スタート' && !gameActive) {
+                     startButton.disabled = false;
+                     if (messageText.textContent === '画像準備中...') {
+                         messageBox.style.display = 'none';
+                     }
+                }
+            }
+        }
+
+        function setupCanvas() {
+            canvas.width = fixedCanvasSize;
+            canvas.height = fixedCanvasSize;
+            gameContainer.style.width = fixedCanvasSize + 'px';
+            gameContainer.style.height = fixedCanvasSize + 'px';
+            tileCount = fixedCanvasSize / gridSize;
+        }
+
+        function initializeGame() {
+            if (imagesLoaded < totalImages) {
+                messageBox.style.display = 'flex';
+                messageText.textContent = '画像を読み込み中...';
+                startButton.disabled = true;
+                return;
+            }
+            proceedWithInitialization();
+        }
+
+        function proceedWithInitialization() {
+            setupCanvas();
+
+            snake = [{ x: Math.floor(tileCount / 2), y: Math.floor(tileCount / 2) }];
+            apple = getRandomApplePosition();
+            score = 0;
+            dx = 1;
+            dy = 0;
+            updateScoreDisplay();
+            messageBox.style.display = 'none';
+            startButton.disabled = true;
+            gameActive = true;
+
+            if (gameInterval) clearInterval(gameInterval);
+            gameInterval = setInterval(gameLoop, 150);
+
+            document.removeEventListener('keydown', handleKeyPress);
+            document.addEventListener('keydown', handleKeyPress);
+
+            upButton.onclick = () => { if (dy === 0 && gameActive) { dx = 0; dy = -1; } };
+            leftButton.onclick = () => { if (dx === 0 && gameActive) { dx = -1; dy = 0; } };
+            downButton.onclick = () => { if (dy === 0 && gameActive) { dx = 0; dy = 1; } };
+            rightButton.onclick = () => { if (dx === 0 && gameActive) { dx = 1; dy = 0; } };
+
+            removeSwipeListeners();
+            addSwipeListeners();
+        }
+
+        function getRandomApplePosition() {
+            let newApple;
+            do {
+                newApple = {
+                    x: Math.floor(Math.random() * tileCount),
+                    y: Math.floor(Math.random() * tileCount)
+                };
+            } while (isAppleOnSnake(newApple));
+            return newApple;
+        }
+
+        function isAppleOnSnake(applePos) {
+            return snake.some(segment => segment.x === applePos.x && segment.y === applePos.y);
+        }
+
+        function gameLoop() {
+            if (!gameActive) return;
+            if (imagesLoaded < totalImages || !appleImage.complete || !snakeHeadImage.complete || !backgroundImage.complete) {
+                 console.log("ゲームループ: 画像がまだ完全に準備できていません。");
+                 return;
+            }
+
+            moveSnake();
+            if (!gameActive) return;
+
+            clearCanvas();
+            drawApple();
+            drawSnake();
+        }
+
+        function moveSnake() {
+            const head = { x: snake[0].x + dx, y: snake[0].y + dy };
+            snake.unshift(head);
+
+            if (head.x === apple.x && head.y === apple.y) {
+                score++;
+                updateScoreDisplay();
+                apple = getRandomApplePosition();
+            } else {
+                snake.pop();
+            }
+            checkCollisions(head);
+        }
+
+        function checkCollisions(head) {
+            if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
+                gameOver("壁に激突！");
+                return;
+            }
+            for (let i = 1; i < snake.length; i++) {
+                if (head.x === snake[i].x && head.y === snake[i].y) {
+                    gameOver("自分に激突！");
+                    return;
+                }
+            }
+        }
+
+        function clearCanvas() {
+            ctx.fillStyle = '#ecf0f1';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function drawApple() {
+            if (appleImage.complete && appleImage.naturalHeight !== 0) {
+                ctx.drawImage(appleImage, apple.x * gridSize, apple.y * gridSize, gridSize, gridSize);
+            } else {
+                // フォールバック描画
+                ctx.fillStyle = '#e74c3c'; ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 2;
+                const appleX_fallback = apple.x * gridSize + gridSize / 2;
+                const appleY_fallback = apple.y * gridSize + gridSize / 2;
+                const radius_fallback = gridSize / 2 - 3;
+                ctx.beginPath(); ctx.arc(appleX_fallback, appleY_fallback, radius_fallback, 0, 2 * Math.PI);
+                ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#27ae60'; ctx.fillRect(appleX_fallback - 2, appleY_fallback - radius_fallback - 3, 4, 5);
+                if (!appleImage.complete) console.warn("リンゴ画像が描画できませんでした。パスを確認してください: " + appleImage.src);
+            }
+        }
+
+        function drawSnake() {
+            snake.forEach((segment, index) => {
+                if (index === 0) {
+                    if (snakeHeadImage.complete && snakeHeadImage.naturalHeight !== 0) {
+                        ctx.drawImage(snakeHeadImage, segment.x * gridSize, segment.y * gridSize, gridSize, gridSize);
+                    } else {
+                        // フォールバック描画
+                        ctx.fillStyle = '#2ecc71';
+                        ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize, gridSize);
+                        if (!snakeHeadImage.complete) console.warn("ヘビ頭画像が描画できませんでした。パスを確認してください: " + snakeHeadImage.src);
+                    }
+                } else {
+                    ctx.fillStyle = '#27ae60'; ctx.strokeStyle = '#16a085'; ctx.lineWidth = 1;
+                    ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize, gridSize);
+                    ctx.strokeRect(segment.x * gridSize, segment.y * gridSize, gridSize, gridSize);
+                }
+            });
+        }
+
+        function updateScoreDisplay() {
+            scoreBoard.textContent = `スコア: ${score}`;
+        }
+
+        function handleKeyPress(event) {
+            if (!gameActive) return;
+            const keyPressed = event.key;
+            if ((keyPressed === 'ArrowUp' || keyPressed.toLowerCase() === 'w') && dy === 0) { dx = 0; dy = -1; }
+            else if ((keyPressed === 'ArrowDown' || keyPressed.toLowerCase() === 's') && dy === 0) { dx = 0; dy = 1; }
+            else if ((keyPressed === 'ArrowLeft' || keyPressed.toLowerCase() === 'a') && dx === 0) { dx = -1; dy = 0; }
+            else if ((keyPressed === 'ArrowRight' || keyPressed.toLowerCase() === 'd') && dx === 0) { dx = 1; dy = 0; }
+        }
+
+        function gameOver(reason) {
+            gameActive = false;
+            clearInterval(gameInterval);
+            messageText.textContent = `${reason} スコア: ${score}`;
+            messageBox.style.display = 'flex';
+            startButton.disabled = false;
+            startButton.textContent = 'もう一度プレイ';
+        }
+
+        startButton.addEventListener('click', () => {
+            if (!gameActive || startButton.textContent === 'もう一度プレイ' || startButton.textContent === 'スタート') {
+                 initializeGame();
+            }
+        });
+        
+        restartButton.addEventListener('click', () => {
+            messageBox.style.display = 'none';
+            initializeGame();
+        });
+
+        window.addEventListener('resize', () => {
+            console.log("Window resized, but canvas size remains fixed.");
+        });
+        
+        let touchStartX = 0, touchStartY = 0, touchEndX = 0, touchEndY = 0;
+        function handleTouchStart(event) { if (!gameActive) return; touchStartX = event.changedTouches[0].screenX; touchStartY = event.changedTouches[0].screenY; }
+        function handleTouchEnd(event) { if (!gameActive) return; touchEndX = event.changedTouches[0].screenX; touchEndY = event.changedTouches[0].screenY; handleSwipe(); }
+        function handleSwipe() { const deltaX = touchEndX - touchStartX; const deltaY = touchEndY - touchStartY; const absDeltaX = Math.abs(deltaX); const absDeltaY = Math.abs(deltaY); const swipeThreshold = 20; if (absDeltaX > swipeThreshold || absDeltaY > swipeThreshold) { if (absDeltaX > absDeltaY) { if (deltaX > 0 && dx === 0) { dx = 1; dy = 0; } else if (deltaX < 0 && dx === 0) { dx = -1; dy = 0; } } else { if (deltaY > 0 && dy === 0) { dx = 0; dy = 1; } else if (deltaY < 0 && dy === 0) { dx = 0; dy = -1; } } } }
+        function addSwipeListeners() { canvas.addEventListener('touchstart', handleTouchStart, { passive: false }); canvas.addEventListener('touchmove', function(e){ e.preventDefault(); }, { passive: false }); canvas.addEventListener('touchend', handleTouchEnd, { passive: true }); }
+        function removeSwipeListeners() { canvas.removeEventListener('touchstart', handleTouchStart); canvas.removeEventListener('touchend', handleTouchEnd); }
+
+        // 初期設定
+        setupCanvas();
+        clearCanvas();
+        startButton.textContent = 'スタート';
+        startButton.disabled = true; 
+
+        if (imagesLoaded < totalImages) {
+            messageBox.style.display = 'flex';
+            messageText.textContent = '画像準備中...';
+        } else {
+             document.body.style.backgroundImage = `url('${backgroundImage.src}')`;
+             startButton.disabled = false;
+        }
+    </script>
+</body>
+</html>
