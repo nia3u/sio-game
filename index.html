@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>シオゲーム</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: 
+                linear-gradient(45deg, rgba(255,0,255,0.03) 25%, transparent 25%, transparent 75%, rgba(255,0,255,0.03) 75%, rgba(255,0,255,0.03)),
+                linear-gradient(45deg, rgba(0,255,255,0.03) 25%, transparent 25%, transparent 75%, rgba(0,255,255,0.03) 75%, rgba(0,255,255,0.03)),
+                url('images/background.png') center center / cover no-repeat fixed, /* 元の画像パスに戻す */
+                #1a1a2e; 
+            background-size: 60px 60px, 60px 60px, cover, auto; 
+            background-position: 0 0, 30px 30px, center center, 0 0; 
+            font-family: 'Press Start 2P', cursive;
+            color: #e0e0e0; 
+            overflow: hidden;
+        }
+        h1 {
+            font-size: 2.5em; 
+            margin-bottom: 15px; 
+            color: #ffd700; 
+            text-shadow: 
+                0 0 5px #fff, 
+                0 0 10px #fff,
+                0 0 15px #ff00de, 
+                0 0 20px #ff00de,
+                3px 3px 0px #c0392b; 
+            animation: titleFlicker 3s infinite alternate;
+        }
+
+        @keyframes titleFlicker {
+            0%, 18%, 22%, 25%, 53%, 57%, 100% {
+                text-shadow:
+                    0 0 4px #fff,
+                    0 0 10px #fff,
+                    0 0 18px #ff00de,
+                    0 0 38px #ff00de,
+                    3px 3px 0px #c0392b;
+            }
+            20%, 24%, 55% { text-shadow: none; }
+        }
+
+        #gameContainer {
+            position: relative; 
+            border: 7px ridge #ffd700; 
+            box-shadow: 
+                0 0 25px rgba(255, 215, 0, 0.7), 
+                0 0 40px rgba(255, 0, 222, 0.5), 
+                inset 0 0 15px rgba(0,0,0,0.5); 
+            background-color: #2d2d44; 
+            touch-action: none;
+            border-radius: 10px; 
+            overflow: hidden; 
+        }
+        canvas {
+            display: block;
+            border-radius: 3px; 
+        }
+        #scoreBoard {
+            font-size: 1.3em; 
+            margin-top: 15px; 
+            padding: 8px 15px; 
+            background: linear-gradient(145deg, #e74c3c, #c0392b); 
+            border-radius: 8px;
+            box-shadow: 0 5px 0 #8f2d22, inset 0 2px 3px rgba(255,255,255,0.3); 
+            color: #fff;
+            text-shadow: 1px 1px 2px #000;
+        }
+        
+        #gameInfo {
+            background-color: rgba(30, 30, 50, 0.9); 
+            border: 3px outset #00ffff; 
+            padding: 12px 18px;
+            margin-top: 15px;
+            border-radius: 10px;
+            text-align: left;
+            max-width: 90%;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5), inset 0 0 5px rgba(0,0,0,0.3);
+            font-size: 0.75em; 
+            line-height: 1.7;
+            color: #c0c0ff; 
+        }
+        #gameInfo h2 {
+            font-size: 1.2em; color: #00ff00; margin-top: 0; margin-bottom: 7px; text-shadow: 1px 1px 0px #008000; 
+        }
+        #gameInfo ul { list-style-type: '🌟'; padding-left: 22px; }
+        #gameInfo li { padding-left: 7px; }
+        .fun-message {
+            font-size: 1.2em; color: #ff69b4; font-weight: bold; text-align: center; margin-top: 10px;
+            animation: funMessagePulse 1.5s infinite; text-shadow: 0 0 5px #fff, 0 0 10px #ff69b4;
+        }
+
+        @keyframes funMessagePulse { 0% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); opacity: 0.8; } }
+
+        #controls { margin-top: 15px; display: flex; gap: 10px; }
+        .control-button {
+            background: linear-gradient(to bottom, #5bc0de, #31b0d5); color: white; border: 2px outset #2aabd2; 
+            padding: 10px 18px; font-family: 'Press Start 2P', cursive; font-size: 0.8em; border-radius: 8px;
+            cursor: pointer; box-shadow: 0 4px 0 #1f90b0, 0 6px 8px rgba(0,0,0,0.3); 
+            transition: all 0.1s ease-out; text-shadow: 1px 1px 1px rgba(0,0,0,0.4);
+        }
+        .control-button:hover { background: linear-gradient(to bottom, #46b8da, #269abc); box-shadow: 0 3px 0 #1b6d85, 0 4px 6px rgba(0,0,0,0.2); transform: translateY(1px); }
+        .control-button:active { background: linear-gradient(to bottom, #31b0d5, #269abc); box-shadow: 0 1px 0 #1b6d85, inset 0 2px 4px rgba(0,0,0,0.3); transform: translateY(3px); }
+        
+        #messageBox {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background-color: rgba(20, 20, 30, 0.97); color: #00ffea; padding: 25px; 
+            border-radius: 15px; text-align: center; font-size: 1.2em; z-index: 100; display: none;
+            box-shadow: 0 0 30px rgba(0, 255, 234, 0.6), inset 0 0 10px rgba(0,0,0,0.5);
+            border: 3px solid #00ffea; animation: messageBoxAppear 0.3s ease-out;
+        }
+        @keyframes messageBoxAppear { from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+        #messageText { margin-bottom: 15px; }
+        #restartButton {
+            background: linear-gradient(to bottom, #5cb85c, #4cae4c); color: white; border: 2px outset #449d44;
+            padding: 10px 20px; font-family: 'Press Start 2P', cursive; font-size: 0.8em; border-radius: 8px;
+            cursor: pointer; box-shadow: 0 4px 0 #398439, 0 6px 8px rgba(0,0,0,0.3);
+            transition: all 0.1s ease-out; text-shadow: 1px 1px 1px rgba(0,0,0,0.4);
+        }
+        #restartButton:hover { background: linear-gradient(to bottom, #4cae4c, #398439); box-shadow: 0 3px 0 #2d672d, 0 4px 6px rgba(0,0,0,0.2); transform: translateY(1px); }
+        #restartButton:active { background: linear-gradient(to bottom, #449d44, #398439); box-shadow: 0 1px 0 #2d672d, inset 0 2px 4px rgba(0,0,0,0.3); transform: translateY(3px); }
+
+        #mobileControls { display: none; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); gap: 8px; margin-top: 10px; width: 160px; }
+        .mobile-button { 
+            background: linear-gradient(to bottom, #5bc0de, #31b0d5); color: white; border: 2px outset #2aabd2;
+            padding: 10px; font-family: 'Press Start 2P', cursive; font-size: 0.9em; border-radius: 8px;
+            cursor: pointer; box-shadow: 0 3px 0 #1f90b0, 0 5px 7px rgba(0,0,0,0.25);
+            display: flex; align-items: center; justify-content: center; transition: all 0.1s ease-out;
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.4);
+        }
+        .mobile-button:hover { background: linear-gradient(to bottom, #46b8da, #269abc); box-shadow: 0 2px 0 #1b6d85, 0 3px 5px rgba(0,0,0,0.2); transform: translateY(1px); }
+        .mobile-button:active { background: linear-gradient(to bottom, #31b0d5, #269abc); box-shadow: 0 1px 0 #1b6d85, inset 0 1px 3px rgba(0,0,0,0.3); transform: translateY(2px); }
+
+        #fallingImagesContainer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; 
+            z-index: 999; 
+            overflow: hidden; 
+        }
+        .falling-image {
+            position: absolute;
+            will-change: transform, top, opacity; 
+        }
+
+    </style>
+</head>
+<body>
+    <h1>シオゲーム</h1>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        <div id="fallingImagesContainer"></div>
+    </div>
+    <div id="scoreBoard">スコア: 0</div>
+
+    <div id="gameInfo">
+        <h2>🎮 あそびかた 🎮</h2>
+        <p><strong>そうさ方法:</strong></p>
+        <ul>
+            <li>パソコン: 矢印キー (↑↓←→) または W A S D キー</li>
+            <li>スマホ: スワイプ または 画面の矢印ボタン</li>
+        </ul>
+        <p><strong>ルール:</strong></p>
+        <ul>
+            <li>がめず🐍を操作してくりすた🔮をたくさん集めよう！</li>
+            <li>カベや自分の体にぶつかるとゲームオーバーだよ。</li>
+        </ul>
+        <p class="fun-message">５０点達成でなにかおきるかも！？ 🥳🎉</p>
+    </div>
+
+    <div id="controls">
+        <button id="startButton" class="control-button">スタート</button>
+    </div>
+
+    <div id="mobileControls">
+        <button id="upButton" class="mobile-button">↑</button>
+        <button id="leftButton" class="mobile-button">←</button>
+        <button id="downButton" class="mobile-button">↓</button>
+        <button id="rightButton" class="mobile-button">→</button>
+    </div>
+
+    <div id="messageBox">
+        <div id="messageText">ゲームオーバー！</div>
+        <button id="restartButton">もう一度プレイ</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreBoard = document.getElementById('scoreBoard');
+        const startButton = document.getElementById('startButton');
+        const messageBox = document.getElementById('messageBox');
+        const messageText = document.getElementById('messageText');
+        const restartButton = document.getElementById('restartButton');
+        const gameContainer = document.getElementById('gameContainer');
+        const mobileControls = document.getElementById('mobileControls');
+        const fallingImagesContainer = document.getElementById('fallingImagesContainer'); 
+        const gameInfo = document.getElementById('gameInfo'); 
+
+        let gridSize;
+        let canvasSize;
+        let tileCount;
+
+        const TARGET_TILE_COUNT = 22;
+        const MIN_GRID_SIZE = 12;
+        const MAX_GRID_SIZE = 35;
+
+        const SNAKE_NAME = "がめず";
+        const APPLE_NAME = "くりすた";
+
+        let snake, apple, score, dx, dy, gameInterval, gameActive;
+        let particles = [];
+        let activeFallingAnimations = []; 
+
+
+        const appleImage = new Image();
+        const snakeHeadImage = new Image();
+        const snakeBodyImage = new Image(); 
+        const canvasBackgroundImage = new Image();
+        const milestoneEffectImage = new Image(); 
+        let imagesLoaded = 0;
+        const totalImages = 5; 
+
+        // 画像パスを元の 'images/...' 形式に戻す
+        appleImage.src = 'images/apple.png'; 
+        snakeHeadImage.src = 'images/snake_head.png'; 
+        snakeBodyImage.src = 'images/snake_body.png'; 
+        canvasBackgroundImage.src = 'images/canvas_background.png';
+        milestoneEffectImage.src = 'images/milestone_effect.png'; 
+
+        appleImage.onload = (event) => imageLoaded(event);
+        snakeHeadImage.onload = (event) => imageLoaded(event);
+        snakeBodyImage.onload = (event) => imageLoaded(event); 
+        canvasBackgroundImage.onload = (event) => imageLoaded(event);
+        milestoneEffectImage.onload = (event) => imageLoaded(event);
+
+
+        appleImage.onerror = () => { console.error(APPLE_NAME + "画像の読み込みに失敗しました: " + appleImage.src); imageLoaded(); };
+        snakeHeadImage.onerror = () => { console.error(SNAKE_NAME + "頭画像の読み込みに失敗しました: " + snakeHeadImage.src); imageLoaded(); };
+        snakeBodyImage.onerror = () => { console.error(SNAKE_NAME + "体画像の読み込みに失敗しました: " + snakeBodyImage.src); imageLoaded(); }; 
+        canvasBackgroundImage.onerror = () => { console.error("Canvas背景画像の読み込みに失敗しました: " + canvasBackgroundImage.src); imageLoaded(); };
+        milestoneEffectImage.onerror = () => { console.error("マイルストーンエフェクト(落下用)画像の読み込みに失敗しました: " + milestoneEffectImage.src); imageLoaded(); };
+
+
+        let synth, noiseSynth;
+        let soundEnabled = false;
+
+        async function initializeAudio() { if (soundEnabled) return; try { await Tone.start(); synth = new Tone.Synth().toDestination(); noiseSynth = new Tone.NoiseSynth({ noise: { type: 'pink' }, envelope: { attack: 0.005, decay: 0.1, sustain: 0 } }).toDestination(); soundEnabled = true; console.log("オーディオコンテキストが開始されました。"); } catch (e) { console.error("オーディオコンテキストの開始に失敗しました:", e); } }
+        document.body.addEventListener('click', initializeAudio, { once: true });
+        document.body.addEventListener('touchstart', initializeAudio, { once: true });
+
+        function playEatSound() { if (soundEnabled && synth) { synth.triggerAttackRelease("C5", "8n", Tone.now()); synth.triggerAttackRelease("E5", "8n", Tone.now() + 0.07); } }
+        function playStartSound() { if (soundEnabled && synth) { synth.triggerAttackRelease("C4", "8n", Tone.now()); synth.triggerAttackRelease("G4", "8n", Tone.now() + 0.1); } }
+        function playGameOverSound() { if (soundEnabled && noiseSynth && synth) { synth.triggerAttackRelease("A2", "4n", Tone.now()); noiseSynth.triggerAttackRelease("2n", Tone.now() + 0.05); } }
+        function playMilestoneSound() { if (soundEnabled && synth) { synth.triggerAttackRelease("G5", "4n", Tone.now()); synth.triggerAttackRelease("C6", "4n", Tone.now() + 0.15); synth.triggerAttackRelease("E6", "4n", Tone.now() + 0.3); } } 
+
+        function createEatEffect(x, y) { 
+            const particleCount = 15; const baseColor = "rgba(0, 255, 234,"; 
+            for (let i = 0; i < particleCount; i++) { particles.push({ x: x * gridSize + gridSize / 2, y: y * gridSize + gridSize / 2, vx: (Math.random() - 0.5) * 5, vy: (Math.random() - 0.5) * 5, size: Math.random() * (gridSize/8) + (gridSize/12), life: 25, color: `${baseColor} ${Math.random() * 0.6 + 0.4})` }); } 
+        }
+        function updateAndDrawParticles() { 
+            for (let i = particles.length - 1; i >= 0; i--) { 
+                const p = particles[i]; p.x += p.vx; p.y += p.vy; p.vy += 0.05; p.life--; 
+                if (p.life <= 0) { particles.splice(i, 1); } else { ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (p.life / 25), 0, Math.PI * 2); ctx.fill(); } 
+            } 
+        }
+
+        function showMilestoneEffect() {
+            console.log("[DEBUG] showMilestoneFallingEffect called. Score:", score);
+            console.log("[DEBUG] Milestone Image Loaded State: complete=", milestoneEffectImage.complete, "naturalHeight=", milestoneEffectImage.naturalHeight);
+
+            if (!milestoneEffectImage.complete || milestoneEffectImage.naturalHeight === 0) {
+                console.warn("[DEBUG] Milestone effect (falling) image not ready or invalid. Cannot show effect.");
+                return;
+            }
+
+            clearFallingAnimations(); 
+
+            const NUM_FALLING_IMAGES = 20; 
+            const IMAGE_BASE_SIZE = gridSize * 2; 
+
+            playMilestoneSound();
+
+            for (let i = 0; i < NUM_FALLING_IMAGES; i++) {
+                const img = document.createElement('img');
+                img.src = milestoneEffectImage.src;
+                img.classList.add('falling-image');
+                
+                const currentImageSize = IMAGE_BASE_SIZE * (Math.random() * 0.5 + 0.75); 
+                const randomX = Math.random() * (canvas.width - currentImageSize);
+                const initialY = -(currentImageSize + Math.random() * 100); 
+                const fallSpeed = Math.random() * 2 + 1.5; 
+                const initialRotation = Math.random() * 360; 
+                const rotationSpeed = (Math.random() - 0.5) * 5; 
+                
+                img.style.left = randomX + 'px';
+                img.style.top = initialY + 'px';
+                img.style.width = currentImageSize + 'px';
+                img.style.height = currentImageSize + 'px';
+                img.style.transform = `rotate(${initialRotation}deg)`;
+                img.style.opacity = (Math.random() * 0.4 + 0.6).toString(); 
+
+                fallingImagesContainer.appendChild(img);
+
+                setTimeout(() => {
+                    animateFallingImage(img, fallSpeed, rotationSpeed, currentImageSize);
+                }, Math.random() * 600); 
+            }
+        }
+
+        function animateFallingImage(imgElement, fallSpeed, rotationSpeed, imageSize) {
+            let posY = parseFloat(imgElement.style.top);
+            let currentRotation = parseFloat(imgElement.style.transform.replace('rotate(', '').replace('deg)', ''));
+            let animationId;
+
+            function fallLoop() {
+                posY += fallSpeed;
+                currentRotation += rotationSpeed;
+                
+                imgElement.style.top = posY + 'px';
+                imgElement.style.transform = `rotate(${currentRotation}deg)`;
+
+                if (posY < canvas.height + imageSize) { 
+                    animationId = requestAnimationFrame(fallLoop);
+                } else {
+                    imgElement.remove(); 
+                }
+            }
+            animationId = requestAnimationFrame(fallLoop);
+            activeFallingAnimations.push(animationId); 
+        }
+        
+        function clearFallingAnimations() {
+            activeFallingAnimations.forEach(id => cancelAnimationFrame(id));
+            activeFallingAnimations = [];
+            if (fallingImagesContainer) { 
+                fallingImagesContainer.innerHTML = '';
+            }
+            console.log("[DEBUG] Cleared falling animations.");
+        }
+
+
+        function imageLoaded(event) {
+            imagesLoaded++;
+            if (imagesLoaded === totalImages) {
+                console.log("すべての画像が読み込まれました。");
+                setupCanvasAndUI();
+                startButton.disabled = false;
+                if (messageText.textContent === '画像準備中...') {
+                    messageBox.style.display = 'none';
+                }
+            }
+        }
+
+        function setupCanvasAndUI() {
+            const padding = 15; 
+            const h1Height = document.querySelector('h1')?.offsetHeight || 30; 
+            const scoreBoardHeight = scoreBoard?.offsetHeight || 25; 
+            const gameInfoHeight = gameInfo?.offsetHeight || 120; 
+            const controlsHeight = controls?.offsetHeight || 40; 
+            const mobileControlsHeight = (mobileControls.style.display === 'grid' ? mobileControls?.offsetHeight : 0) || 0;
+
+            const availableWidth = window.innerWidth - 20; 
+            const availableHeight = window.innerHeight - h1Height - scoreBoardHeight - gameInfoHeight - controlsHeight - mobileControlsHeight - padding * 2;
+
+            let potentialSize = Math.min(availableWidth, availableHeight);
+            let calculatedGridSize = Math.floor(potentialSize / TARGET_TILE_COUNT);
+            gridSize = Math.max(MIN_GRID_SIZE, Math.min(calculatedGridSize, MAX_GRID_SIZE));
+            
+            tileCount = TARGET_TILE_COUNT;
+            canvasSize = tileCount * gridSize;
+
+            if (canvasSize > potentialSize && potentialSize > MIN_GRID_SIZE * TARGET_TILE_COUNT) {
+                 tileCount = Math.floor(potentialSize / gridSize);
+                 canvasSize = tileCount * gridSize;
+            }
+            gameInfo.style.width = Math.max(canvasSize - 30, 280) + 'px'; 
+
+            canvas.width = canvasSize;
+            canvas.height = canvasSize;
+            gameContainer.style.width = canvasSize + 'px';
+            gameContainer.style.height = canvasSize + 'px';
+            
+            console.log(`Canvas Size: ${canvasSize}px, Grid Size: ${gridSize}px, Tile Count: ${tileCount}`);
+
+            if (window.innerWidth <= 650 || canvasSize < 380) { mobileControls.style.display = 'grid'; } else { mobileControls.style.display = 'none'; }
+            clearCanvas();
+        }
+
+        function initializeGame() {
+            if (imagesLoaded < totalImages) {
+                messageBox.style.display = 'flex'; messageText.textContent = '画像を読み込み中...'; startButton.disabled = true; return;
+            }
+            if (!soundEnabled) { initializeAudio(); }
+            gameInfo.style.display = 'none'; 
+            setupCanvasAndUI();
+            proceedWithInitialization();
+        }
+
+        function proceedWithInitialization() {
+            particles = [];
+            clearFallingAnimations(); 
+
+            snake = [{ x: Math.floor(tileCount / 2), y: Math.floor(tileCount / 2) }];
+            apple = getRandomApplePosition();
+            score = 0; dx = 1; dy = 0;
+            updateScoreDisplay();
+            messageBox.style.display = 'none';
+            startButton.disabled = true; gameActive = true;
+
+            if (gameInterval) clearInterval(gameInterval);
+            gameInterval = setInterval(gameLoop, 110); 
+
+            document.removeEventListener('keydown', handleKeyPress);
+            document.addEventListener('keydown', handleKeyPress);
+
+            upButton.onclick = () => { if (dy === 0 && gameActive) { dx = 0; dy = -1; } };
+            leftButton.onclick = () => { if (dx === 0 && gameActive) { dx = -1; dy = 0; } };
+            downButton.onclick = () => { if (dy === 0 && gameActive) { dx = 0; dy = 1; } };
+            rightButton.onclick = () => { if (dx === 0 && gameActive) { dx = 1; dy = 0; } };
+
+            removeSwipeListeners(); addSwipeListeners();
+        }
+
+        function getRandomApplePosition() { let newApple; do { newApple = { x: Math.floor(Math.random() * tileCount), y: Math.floor(Math.random() * tileCount) }; } while (isAppleOnSnake(newApple)); return newApple; }
+        function isAppleOnSnake(applePos) { return snake.some(segment => segment.x === applePos.x && segment.y === applePos.y); }
+
+        function gameLoop() {
+            if (!gameActive) return;
+            if (imagesLoaded < totalImages || !canvasBackgroundImage.complete || !milestoneEffectImage.complete || !snakeBodyImage.complete) { console.log("ゲームループ: 画像がまだ完全に準備できていません。"); return; }
+            moveSnake();
+            if (!gameActive) return;
+            clearCanvas(); drawApple(); drawSnake(); updateAndDrawParticles();
+        }
+
+        function moveSnake() {
+            const head = { x: snake[0].x + dx, y: snake[0].y + dy };
+            snake.unshift(head);
+
+            if (head.x === apple.x && head.y === apple.y) {
+                score++; updateScoreDisplay(); playEatSound(); createEatEffect(apple.x, apple.y); apple = getRandomApplePosition();
+                if (score >= 50 && score % 10 === 0) { 
+                    showMilestoneEffect(); 
+                }
+            } else {
+                snake.pop();
+            }
+            checkCollisions(head);
+        }
+        function checkCollisions(head) { if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) { gameOver("壁に激突！"); return; } for (let i = 1; i < snake.length; i++) { if (head.x === snake[i].x && head.y === snake[i].y) { gameOver("自分に激突！"); return; } } }
+        
+        function clearCanvas() {
+            if (canvasBackgroundImage.complete && canvasBackgroundImage.naturalHeight !== 0) {
+                ctx.drawImage(canvasBackgroundImage, 0, 0, canvas.width, canvas.height);
+            } else {
+                ctx.fillStyle = '#1c1c2b'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                if (imagesLoaded === totalImages && !canvasBackgroundImage.complete) { console.warn("Canvas背景画像が描画できませんでした: " + canvasBackgroundImage.src); }
+            }
+        }
+
+        function drawApple() { 
+            if (appleImage.complete && appleImage.naturalHeight !== 0) { ctx.drawImage(appleImage, apple.x * gridSize, apple.y * gridSize, gridSize, gridSize); } else { 
+                ctx.fillStyle = '#ff33cc'; ctx.strokeStyle = '#ff99ee'; ctx.lineWidth = 2; 
+                const appleX_fallback = apple.x * gridSize + gridSize / 2; const appleY_fallback = apple.y * gridSize + gridSize / 2; const radius_fallback = gridSize / 2 - 2; 
+                ctx.beginPath(); ctx.arc(appleX_fallback, appleY_fallback, radius_fallback, 0, 2 * Math.PI); ctx.fill(); ctx.stroke(); 
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; ctx.beginPath(); ctx.arc(appleX_fallback - radius_fallback * 0.3, appleY_fallback - radius_fallback * 0.3, radius_fallback * 0.2, 0, 2 * Math.PI); ctx.fill();
+            } 
+        }
+        
+        function drawSnake() {
+            snake.forEach((segment, index) => {
+                if (index === 0) { 
+                    if (snakeHeadImage.complete && snakeHeadImage.naturalHeight !== 0) { ctx.drawImage(snakeHeadImage, segment.x * gridSize, segment.y * gridSize, gridSize, gridSize); } else {
+                        ctx.fillStyle = '#00ff00'; ctx.strokeStyle = '#008000'; ctx.lineWidth = 2;
+                        ctx.fillRect(segment.x * gridSize +1, segment.y * gridSize +1, gridSize -2, gridSize -2); ctx.strokeRect(segment.x * gridSize +1, segment.y * gridSize +1, gridSize -2, gridSize -2);
+                    }
+                } else { 
+                    if (snakeBodyImage.complete && snakeBodyImage.naturalHeight !== 0) { ctx.drawImage(snakeBodyImage, segment.x * gridSize, segment.y * gridSize, gridSize, gridSize); } else {
+                        ctx.fillStyle = '#00cc00'; ctx.strokeStyle = '#005500'; ctx.lineWidth = 1;
+                        ctx.fillRect(segment.x * gridSize +1, segment.y * gridSize +1, gridSize -2, gridSize -2); ctx.strokeRect(segment.x * gridSize +1, segment.y * gridSize +1, gridSize -2, gridSize -2);
+                    }
+                }
+            });
+        }
+
+        function updateScoreDisplay() { scoreBoard.textContent = `スコア: ${score}`; }
+        function handleKeyPress(event) { if (!gameActive) return; const keyPressed = event.key; if ((keyPressed === 'ArrowUp' || keyPressed.toLowerCase() === 'w') && dy === 0) { dx = 0; dy = -1; } else if ((keyPressed === 'ArrowDown' || keyPressed.toLowerCase() === 's') && dy === 0) { dx = 0; dy = 1; } else if ((keyPressed === 'ArrowLeft' || keyPressed.toLowerCase() === 'a') && dx === 0) { dx = -1; dy = 0; } else if ((keyPressed === 'ArrowRight' || keyPressed.toLowerCase() === 'd') && dx === 0) { dx = 1; dy = 0; } }
+        
+        function gameOver(reason) {
+            gameActive = false; clearInterval(gameInterval);
+            clearFallingAnimations(); 
+            playGameOverSound();
+            messageText.textContent = `${reason} スコア: ${score}`;
+            messageBox.style.display = 'flex';
+            startButton.disabled = false; startButton.textContent = 'もう一度プレイ';
+            gameInfo.style.display = 'block'; 
+        }
+
+        startButton.addEventListener('click', () => { if (!gameActive || startButton.textContent === 'もう一度プレイ' || startButton.textContent === 'スタート') { playStartSound(); initializeGame(); } });
+        restartButton.addEventListener('click', () => { playStartSound(); messageBox.style.display = 'none'; initializeGame(); });
+
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                 if (!gameActive && (startButton.textContent === 'スタート' || startButton.textContent === 'もう一度プレイ')) {
+                    console.log("Resizing canvas and UI (game not active)...");
+                    setupCanvasAndUI(); gameInfo.style.display = 'block';
+                } else if (gameActive) { console.log("ゲームプレイ中のリサイズは、現在のセッションではCanvasサイズに影響しません。"); }
+            }, 250);
+        });
+        
+        let touchStartX = 0, touchStartY = 0, touchEndX = 0, touchEndY = 0;
+        function handleTouchStart(event) { if (!gameActive) return; touchStartX = event.changedTouches[0].screenX; touchStartY = event.changedTouches[0].screenY; }
+        function handleTouchEnd(event) { if (!gameActive) return; touchEndX = event.changedTouches[0].screenX; touchEndY = event.changedTouches[0].screenY; handleSwipe(); }
+        function handleSwipe() { const deltaX = touchEndX - touchStartX; const deltaY = touchEndY - touchStartY; const absDeltaX = Math.abs(deltaX); const absDeltaY = Math.abs(deltaY); const swipeThreshold = 20; if (absDeltaX > swipeThreshold || absDeltaY > swipeThreshold) { if (absDeltaX > absDeltaY) { if (deltaX > 0 && dx === 0) { dx = 1; dy = 0; } else if (deltaX < 0 && dx === 0) { dx = -1; dy = 0; } } else { if (deltaY > 0 && dy === 0) { dx = 0; dy = 1; } else if (deltaY < 0 && dy === 0) { dx = 0; dy = -1; } } } }
+        function addSwipeListeners() { canvas.addEventListener('touchstart', handleTouchStart, { passive: false }); canvas.addEventListener('touchmove', function(e){ e.preventDefault(); }, { passive: false }); canvas.addEventListener('touchend', handleTouchEnd, { passive: true }); }
+        function removeSwipeListeners() { canvas.removeEventListener('touchstart', handleTouchStart); canvas.removeEventListener('touchend', handleTouchEnd); }
+
+        setupCanvasAndUI(); gameInfo.style.display = 'block'; startButton.textContent = 'スタート'; startButton.disabled = true; 
+        if (imagesLoaded < totalImages) { messageBox.style.display = 'flex'; messageText.textContent = '画像準備中...'; } else { startButton.disabled = false; }
+    </script>
+</body>
+</html>
